@@ -1,0 +1,189 @@
+---
+title: "Recharge Function Applications"
+author: "Alysa M. Yoder"
+date: "June 25, 2018"
+output: 
+  html_document:
+    toc: TRUE
+    toc_float: TRUE
+    code_folding: hide
+    theme: flatly
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+knitr::opts_chunk$set(warning = FALSE, 
+                      message = FALSE,
+                      error = FALSE, 
+                      cache = TRUE, 
+                      eval = TRUE)
+library(here)
+```
+
+## Notes
+Supplementary material to the recharge volume calculator function.
+Actual function is in rech_fxn.R, this 'rech_fxn.Rmd' has the formatting and its where I'll actually do the calculations of recharge. 
+
+> Rules
+
+* import water levels at the beginning and end of the event
+* input files' columns must be in this order: lat, long, level
+* the 'level' column must be in meters of groundwater elevation relative to mean sea level
+
+***
+
+# Get Groundwater Level Data
+```{r}
+adata <- read.csv(here::here('data', 'allsets.csv'))
+adata <- adata[-c(1,3,15,17:31)] #removing index numbers, MW-13, Oneto-Ag (confined), and Nathan's text 
+```
+
+# Call Functions
+```{r}
+source('rech_fxn.R')
+source('rechcalc_gwl_format.R')
+```
+
+# Comparison of Similar Event Pre&Post Levee Removal
+Why is it returning larger than actual changes in water level at MW23 and MW 17? 
+
+* Subset was converting numeric water levels to factor, this is now fixed in the formatting function by converting this column back to numeric. 
+```{r}
+#recharge event max and min GWLs pre-removal, during the 2014 WY
+evlo14 <- as.data.frame(t(subset(adata, Date == "2014-02-10 02:15:00")))
+evhi14 <- as.data.frame(t(subset(adata, Date == "2014-02-12 05:30:00")))
+#clean up data to get just water levels
+#low
+evlo14 <- rechcalc_gwl_format(evlo14)
+#high
+evhi14 <- rechcalc_gwl_format(evhi14)
+#use function for 2014 event 
+rechvol(begin = evlo14, end = evhi14, plot_title = "2014WY Event")
+
+#repeat all for 2015 WY
+evlo15 <- as.data.frame(t(subset(adata, Date == "2014-12-12 21:15:00")))
+evhi15 <- as.data.frame(t(subset(adata, Date == "2014-12-14 09:30:00")))
+#clean up data to get just water levels
+#low
+evlo15 <- rechcalc_gwl_format(evlo15)
+#high
+evhi15 <- rechcalc_gwl_format(evhi15)
+#use function for 2014 event 
+rechvol(begin = evlo15, end = evhi15, plot_title = "2015WY Event")
+
+```
+
+# Look at flood vols on a day during each event
+```{r}
+library(raster)
+library(rgdal)
+library(dplyr)
+fld14 <- raster(here::here("rasters", "predicted_post_Depth_2014.02.11_3m.grd"), package = "raster")
+p1 <- spplot(fld14, col.regions = rev(get_col_regions()), main = "2014 Event Flooding", at = seq(0,1.5, by = 0.1))
+
+fld15 <- raster(here::here("rasters", "predicted_post_Depth_2014.12.13_3m.grd"), package = "raster")
+p2 <- spplot(fld15, col.regions = rev(get_col_regions()), main = "2015 Event Flooding", at = seq(0,1.5, by = 0.1))
+#plot both days of flooding side by side for comparison
+print(p1, position = c(0, 0, .5, 1), more = TRUE)
+print(p2, position = c(.5, 0, 1, 1))
+```
+
+# Determine volume of flooding on a day during each event
+```{r}
+#each cell is 3x3
+c_a <- 9
+# m3 per cell
+totm3_14 <- cellStats((c_a * fld14), "sum")
+totm3_15 <- cellStats((c_a * fld15), "sum")
+#show results in table
+t <- matrix(c(totm3_14, totm3_15), ncol=1)
+colnames(t) <- "Floodwater Volume m^3"
+rownames(t) <- c("2014WY", "2015WY")
+t <- as.table(t)
+kable(t)
+```
+
+# Determine avg flood volume throughout event w/weighted avg
+```{r}
+fl1_14 <- raster(here::here("rasters", "predicted_post_Depth_2014.02.10_3m.grd"), package = "raster")
+pr1_14 <- (24-2.25)/24 #proportion of this day covering the event
+fl2_14 <- raster(here::here("rasters", "predicted_post_Depth_2014.02.11_3m.grd"), package = "raster")
+pr2_14 <- 1
+fl3_14 <- raster(here::here("rasters", "predicted_post_Depth_2014.02.12_3m.grd"), package = "raster")
+pr3_14 <- 5.5/24
+
+fl1_15 <- raster(here::here("rasters", "predicted_post_Depth_2014.12.12_3m.grd"), package = "raster")
+pr1_15 <- (24-21.25)/24
+fl2_15 <- raster(here::here("rasters", "predicted_post_Depth_2014.12.13_3m.grd"), package = "raster")
+pr2_15 <- 1
+fl3_15 <- raster(here::here("rasters", "predicted_post_Depth_2014.12.14_3m.grd"), package = "raster")
+pr3_15 <- 9.5/24
+#2014 flood vol each day 
+v1_14 <- cellStats((9 * fl1_14), "sum") #sum of the day's floodwater volume 
+v2_14 <- cellStats((9 * fl2_14), "sum")
+v3_14 <- cellStats((9 * fl3_14), "sum")
+#2015 flood vol each day
+v1_15 <- cellStats((9 * fl1_15), "sum") 
+v2_15 <- cellStats((9 * fl2_15), "sum")
+v3_15 <- cellStats((9 * fl3_15), "sum")
+
+#weighted avg for 2014 event
+wtdvol14 <- (v1_14*pr1_14) + (v2_14*pr2_14) + (v3_14*pr3_14)
+#weighted avg for 2015 event
+wtdvol15 <- (v1_15*pr1_15) + (v2_15*pr2_15) + (v3_15*pr3_15)
+#put results in table
+wt <- matrix(c(wtdvol14, wtdvol15), ncol=1)
+colnames(wt) <- "Avg Floodwater Vol During Event (m^3)"
+rownames(wt) <- c("2014WY", "2015WY")
+wt <- as.table(wt)
+kable(wt)
+```
+
+# Determine Integrated Discharge (Mich Bar) Throughout Flood Event
+```{r}
+library(here)
+library(dplyr)
+library(kableExtra)
+mb <- read.csv(here::here("data", "mich_bar_cms_all.csv"), stringsAsFactors = FALSE)
+mb$Date <- as.POSIXct(mb$Date, format = "%m/%d/%Y %H:%M")
+#subset discharge data to the length of each flooding event, creating data frames mb14 and mb15
+mb14 <- mb %>% 
+  select(Date, MiBarCMS) %>%
+  filter(Date >= as.POSIXct("2014-02-10 02:15:00") & Date <= as.POSIXct("2014-02-12 05:30:00"))
+mb15 <- mb %>% 
+  select(Date, MiBarCMS) %>%
+  filter(Date >= as.POSIXct("2014-12-12 21:15:00") & Date <= as.POSIXct("2014-12-14 09:30:00"))
+#calculate integrated volume of discharge throughout the event 
+qvol14 <- sum(mb14$MiBarCMS)*((15*60)*nrow(mb14)) #multiply the total number of seconds by the sum of m^3/s 
+qvol15 <- sum(mb15$MiBarCMS)*((15*60)*nrow(mb15))
+vols <- matrix(c(qvol14,qvol15), ncol=1)
+colnames(vols) <- "Integrated Discharge Vol at Mich Bar (m^3)"
+rownames(vols) <- c("2014 Event", "2015 Event")
+vols <- as.table(vols)
+kable(vols) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = F, position = "left")
+```
+
+# Get Lat Long Coordinates for Each Well, this also happens inside 'rechcalc_gwl_format.R' function
+```{r, include= FALSE}
+# format dataframes w/lat long 
+label <- read.csv(here('data', "MW_label_allsets.csv"), header = F) #get lat long data, already in order of allsets.csv wells
+label[3] <- NULL #removes well ID text column, leaving only lat long coords
+```
+
+# Get Data from Desired Dates
+```{r, include=FALSE}
+# grab max and mins from each water year. 
+max2014 <- as.data.frame(t(subset(adata, Date == "2014-05-10 12:00:00")))
+min2014 <- as.data.frame(t(subset(adata, Date == "2014-02-09 12:00:00")))
+
+max2015 <- as.data.frame(t(subset(adata,Date =="2015-04-12 12:00:00")))
+min2015 <- as.data.frame(t(subset(adata,Date =="2014-12-04 12:00:00")))
+
+max2016 <- as.data.frame(t(subset(adata,Date =="2016-03-18 12:00:00")))
+min2016 <- as.data.frame(t(subset(adata,Date=="2015-12-10 12:00:00")))
+
+min2017 <- as.data.frame(t(subset(adata,Date=="2016-10-19 12:00:00")))
+max2017 <- as.data.frame(t(subset(adata,Date=="2017-02-11 12:00:00")))
+
+```

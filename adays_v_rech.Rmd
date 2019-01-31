@@ -1,0 +1,139 @@
+---
+title: "Area-Days_v_Recharge"
+author: "Alysa Yoder"
+date: "1/18/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Get Inundation Vol. Data
+```{r}
+library(lubridate)
+library(plotly)
+library(here)
+inundation_data <- read.csv(here::here("data", "Whipple_Hydrospatial_PostRestoration_wy2013-2017.csv"))
+inundation_data$dt <- mdy(inundation_data$dt)
+```
+
+## Get Rech. Event Timeframes
+```{r}
+
+## Writing a df for all recharge event timeframes in 2013WY
+event_pre13 <- data.frame(matrix(ncol = 4, nrow = 3))
+cnames <- c("Event Number", "Start", "End", "Length")
+colnames(event_pre13) <- cnames
+
+#event_pre13$`Event Number` <- seq(1,3,1)
+event_pre13$Start <- as.POSIXct(c("12/18/2012 22:00:00", "12/23/2012 02:45:00", "01/05/2013 21:45:00"), 
+                                format = "%m/%d/%Y %H:%M")
+event_pre13$End <- as.POSIXct(c("12/19/2012 20:00:00", "12/28/2012 14:00:00", "01/09/2013 02:00:00"), 
+                                format = "%m/%d/%Y %H:%M")
+#event_pre13$Length <- event_pre13$End - event_pre13$Start #leaving empty so they'll be consistent 
+```
+
+```{r pre removal dates}
+## Writing a df for all recharge event timeframes in 2014WY
+event_pre14 <- data.frame(matrix(ncol=4, nrow=4))
+cnames <- c("Event Number", "Start", "End", "Length")
+colnames(event_pre14) <- cnames
+#event_pre14[ ,1] <- seq(1,4,1) #leaving blank, more efficient to do all at once after rbind
+#these are start times of each event 
+event_pre14[ ,2] <- as.POSIXct(c("02/09/2014 23:00:00", 
+                                 "03/01/2014 02:00:00", 
+                                 "03/02/2014 18:45:00", 
+                                 "04/02/2014 15:45:00"),
+                               format = "%m/%d/%Y %H:%M")
+#these are end times of each event 
+event_pre14[ ,3] <- as.POSIXct(c("02/12/2014 18:00:00", 
+                                 "03/06/2014 15:30:00", 
+                                 "03/08/2014 14:00:00", 
+                                 "04/05/2014 16:00:00"),
+                               format = "%m/%d/%Y %H:%M")
+#event_pre14[ ,4] <- event_pre14[ ,3] - event_pre14[ ,2] #leaving these empty for now so units will be consistent
+```
+
+```{r}
+## Writing a df of all pre-removal recharge event timeframes
+event_pre <- rbind(event_pre13, event_pre14)
+event_pre$`Event Number` <- seq(1,nrow(event_pre), 1)
+event_pre$Length <- event_pre$End-event_pre$Start
+
+```
+
+```{r post removal}
+
+event_post <- data.frame(matrix(ncol=4, nrow=19))
+cnames <- c("Event Number", "Start", "End", "Length")
+colnames(event_post) <- cnames
+#event_post[ ,1] <- seq(1,4,1) #leaving blank, more efficient to do all at once after rbind
+#these are start times of each event 
+event_post[ ,2] <- as.POSIXct(c("12/12/2014 23:00:00", 
+                                 "12/20/2014 14:45:00", 
+                                 "02/08/2015 03:45:00", #last of 2015WY events
+                                 "12/22/2015 23:15:00", 
+                                "01/19/2016 00:15:00",
+                                "01/23/2016 14:45:00",
+                                "01/30/2016 12:00:00",
+                                "02/19/2016 04:45:00",
+                                "03/05/2016 13:45:00", #last of 2016WY events
+                                "11/28/2016 19:45:00",
+                                "12/11/2016 1:30:00",
+                                "01/04/2017 19:00:00",
+                                "01/18/2017 18:45:00",
+                                "02/04/2017 07:15:00",
+                                "02/20/2017 14:15:00",
+                                "03/22/2017 15:00:00",
+                                "04/07/2017 04:30:00",
+                                "04/13/2017 19:00:00",
+                                "04/18/2017 15:00:00"),
+                               format = "%m/%d/%Y %H:%M")
+#these are end times of each event 
+event_post[ ,3] <- as.POSIXct(c("12/14/2014 16:45:00", 
+                                 "12/22/2014 14:00:00", 
+                                 "02/12/2015 15:45:00", #last of 2015WY events
+                                 "12/23/2015 12:45:00",
+                                "01/21/2016 02:30:00",
+                                "01/25/2016 04:30:00",
+                                "02/02/2016 12:00:00",
+                                "02/19/2016 20:45:00",
+                                "03/17/2016 13:00:00", #last of 2016WY events
+                                "11/29/2016 03:00:00",
+                                "12/21/2016 12:45:00",
+                                "01/12/2017 14:00:00",
+                                "01/24/2017 07:00:00",
+                                "02/11/2017 09:00:00",
+                                "02/22/2017 14:15:00",
+                                "03/23/2017 16:15:00",
+                                "04/09/2017 19:45:00", 
+                                "04/15/2017 01:30:00",
+                                "04/20/2017 03:45:00"), 
+                               format = "%m/%d/%Y %H:%M")
+#write df of all start and end dates w/proper headings
+event_post$`Event Number` <- seq(1,nrow(event_post), 1)
+event_post$Length <- event_post$End-event_post$Start
+```
+
+```{r combine pre and post event timestamps}
+event <- rbind(event_pre, event_post)
+#write.csv(event, file = "rch_evnts.csv")
+```
+
+### Calculate Aday values and send to a df
+```{r}
+source(here::here("inund_events2019", "Aday_fxn.R")) #calculates area*days using whipple km^2 data and event lengths
+source(here::here("inund_events2019", "aday_evsub_fxn.R")) #creates Aday df with data from the specified time interval 
+
+#add event ID column to DF for cleaner result communication
+EventID <- seq(1,nrow(event),1)
+
+Aday_dat <- data.frame(EventID) # event number in event_pre corresponds to the row numbers in Qdat. 
+
+for (row in 1:nrow(event)) {
+ Aday_dat[row, 2] <- Aday(ev_data = evsub(event[row,2], event[row,3]))
+}
+colnames(Aday_dat) <- c("Event #", "Area*Days")
+
+```
