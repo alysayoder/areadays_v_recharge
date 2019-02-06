@@ -135,5 +135,5 @@ for (row in 1:nrow(event)) {
  Aday_dat[row, 2] <- Aday(ev_data = evsub(event[row,2], event[row,3]))
 }
 colnames(Aday_dat) <- c("Event #", "Area*Days")
-
+Aday_dat
 ```
