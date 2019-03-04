@@ -137,3 +137,73 @@ for (row in 1:nrow(event)) {
 colnames(Aday_dat) <- c("Event #", "Area*Days")
 Aday_dat
 ```
+
+## Load recharge event data and add area*days to it for figure generation
+```{r}
+rechdat <- read.csv(here::here("data", "rech_ev_data.csv"))
+rechdat$Aday_dat <- Aday_dat[,2]
+rechdat$X <- NULL
+```
+
+## Make figure showing correlation of rech volume and area*days, grouped pre v post
+```{r}
+library(ggplot2)
+ggplot(rechdat, aes(colour=factor(prevpost))) +
+  geom_point(aes(x=rechdat$Aday_dat, y=rechdat$RechVol)) +
+  scale_y_log10()+
+  scale_x_log10()+
+ # annotation_logticks(base=10, sides = 'bl', scaled =T, short=unit(0,1,'cm'))+
+  geom_smooth(data=rechdat[1:7,], aes(x=rechdat$Aday_dat[1:7], y=rechdat$RechVol[1:7]),
+method ="lm", se=T) +
+  geom_smooth(data=rechdat[8:26,], aes(x=rechdat$Aday_dat[8:26], y=rechdat$RechVol[8:26]),
+              method = "lm", se=T) +
+  scale_colour_discrete(name = "Levee Removal Status", 
+                        breaks=c(2,1),
+                        labels=c("Pre-Removal", "Post-Removal")) +
+  xlab(bquote('Area*Days'))+
+  ylab(bquote('Recharge Volume ('~m^3~') (log)'))+
+  theme_set(theme_bw(base_size=20))+
+  theme(legend.position = "top")
+
+```
+
+## Correlation of area*days with recharge volume of each event, not grouped
+```{r}
+library(ggplot2)
+ggplot(rechdat) +
+  geom_point(aes(x=rechdat$Aday_dat, y=rechdat$RechVol)) +
+ #scale_y_log10()+
+#scale_x_log10()+
+ # annotation_logticks(base=10, sides = 'bl', scaled =T, short=unit(0,1,'cm'))+
+  geom_smooth(data=rechdat, aes(x=rechdat$Aday_dat, y=rechdat$RechVol),
+method ="lm", se=T) +
+  xlab(bquote('Area*Days ('~km^2~'*day) (log)'))+
+  ylab(bquote('Recharge Volume ('~m^3~') (log)'))+
+  theme_set(theme_bw(base_size=20))+
+  theme(legend.position = "top")
+```
+
+## Code from previous cumulative discharge v. recharge figure 
+```{r{}}
+library(ggplot2)
+#devtools::source_gist("524eade46135f6348140", filename = "ggplot_smooth_func.R")
+ggplot(agree,aes(colour=factor(prevpost))) + 
+  
+  geom_point(aes(x=agree$Cumul.Dis, y=agree$RechVol)) +
+ scale_y_log10()+
+  scale_x_log10()+
+  annotation_logticks(base=10, sides = 'bl', scaled = TRUE, short=unit(0.1, "cm"))+
+  geom_smooth(data=agree[1:7,], aes(x=agree$Cumul.Dis[1:7], y=agree$RechVol[1:7]), 
+              method="lm", se=T) +
+  geom_smooth(data=agree[8:26,], aes(x=agree$Cumul.Dis[8:26], y=agree$RechVol[8:26]), 
+              method="lm", se=T) +
+  scale_colour_discrete(name="Levee Removal Status", 
+                        breaks=c(2,1),
+                        labels=c("Pre-Removal", "Post-Removal")) +
+  #labs(title = "Recharge Volume vs. Cumulative Discharge",
+ # subtitle="Throughout Each Recharge Event, 2013-2017") +
+       xlab(bquote('Cumulative Discharge ('~m^3~') (log)')) +
+       ylab(bquote('Recharge Volume ('~m^3~') (log)')) +
+    theme_set(theme_bw(base_size = 20))+
+theme(legend.position = "top") 
+```

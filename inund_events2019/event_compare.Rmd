@@ -278,7 +278,6 @@ barplot(height = rech$`Recharge Volume (m3)`, width = barwidth,
                 border = NA)
 ```
 
-
 # Recharge Volume per Cumulative River Discharge, Pre vs. Post
 ```{r agreement test}
 agree <- cbind(rech$`Event ID`, rech$`Recharge Volume (m3)`, 
@@ -304,6 +303,7 @@ agr <- plot_ly(ag) %>%
   layout(title = 'Event Recharge Vol. per Event Cumulative Discharge Vol. pre and post levee removal')
 agr
 ```
+
 # Recharge vs. Cumulative Discharge of Each Event
 ```{r rech v dis}
 library(devtools)
